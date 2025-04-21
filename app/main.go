@@ -23,12 +23,38 @@ func main() {
 		fmt.Println("Error accepting connection: ", err.Error())
 		os.Exit(1)
 	}
-	response(conn)
+	request(conn)
 
 }
-func response(conn net.Conn) {
+func request(conn net.Conn) {
 	defer conn.Close()
-	response := "HTTP/1.1 200 OK\r\n\r\n"
+	request := make([]byte, 1024)
+	n, err := conn.Read(request)
+	if err != nil {
+		fmt.Println("Error reading from connection: ", err.Error())
+		os.Exit(1)
+	}
+	str := string(request[:n])
+	_, path, _, err := parseRequestLine(str)
+	if err != nil {
+		fmt.Println("Error parsing request: ", err.Error())
+		os.Exit(1)
+	}
+	if path == "/" {
+		response(conn, true)
+	} else {
+		response(conn, false)
+	}
+}
+func response(conn net.Conn, okay bool) {
+	defer conn.Close()
+	var response string = ""
+	if okay {
+
+		response = "HTTP/1.1 200 OK\r\n\r\n"
+	} else {
+		response = "HTTP/1.1 404 Not Found\r\n\r\n"
+	}
 	_, err := conn.Write([]byte(response))
 	if err != nil {
 		fmt.Println("Error writing to connection: ", err.Error())
