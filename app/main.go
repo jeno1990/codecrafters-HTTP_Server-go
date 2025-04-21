@@ -16,10 +16,22 @@ func main() {
 		fmt.Println("Failed to bind to port 4221")
 		os.Exit(1)
 	}
+	defer l.Close()
+	conn, err := l.Accept()
 
-	_, err = l.Accept()
 	if err != nil {
 		fmt.Println("Error accepting connection: ", err.Error())
+		os.Exit(1)
+	}
+	response(conn)
+
+}
+func response(conn net.Conn) {
+	defer conn.Close()
+	response := "HTTP/1.1 200 OK\r\n\r\n"
+	_, err := conn.Write([]byte(response))
+	if err != nil {
+		fmt.Println("Error writing to connection: ", err.Error())
 		os.Exit(1)
 	}
 }
