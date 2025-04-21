@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 )
 
 var _ = net.Listen
@@ -40,18 +41,24 @@ func request(conn net.Conn) {
 		fmt.Println("Error parsing request: ", err.Error())
 		os.Exit(1)
 	}
-	if path == "/" {
-		response(conn, true)
+	print(path)
+	// pages := make(map[string]bool)
+
+	path_list := strings.Split(path, "/")
+	data := path_list[len(path_list)-1]
+	fmt.Println("Data: ", data)
+	if path == "/" || path_list[1] == "echo" {
+		response(conn, true, data)
 	} else {
-		response(conn, false)
+		response(conn, false, "")
 	}
+
 }
-func response(conn net.Conn, okay bool) {
+func response(conn net.Conn, okay bool, body string) {
 	defer conn.Close()
 	var response string = ""
 	if okay {
-
-		response = "HTTP/1.1 200 OK\r\n\r\n"
+		response = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(body), body)
 	} else {
 		response = "HTTP/1.1 404 Not Found\r\n\r\n"
 	}
