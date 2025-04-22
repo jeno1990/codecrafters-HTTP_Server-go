@@ -18,13 +18,15 @@ func main() {
 		os.Exit(1)
 	}
 	defer l.Close()
-	conn, err := l.Accept()
+	for {
+		conn, err := l.Accept()
 
-	if err != nil {
-		fmt.Println("Error accepting connection: ", err.Error())
-		os.Exit(1)
+		if err != nil {
+			fmt.Println("Error accepting connection: ", err.Error())
+			os.Exit(1)
+		}
+		go request(conn)
 	}
-	request(conn)
 
 }
 func request(conn net.Conn) {
@@ -45,28 +47,52 @@ func request(conn net.Conn) {
 	path_list := strings.Split(req.Path, "/")
 	fmt.Println("req: ", req)
 
+	// if req.Path == "/" || path_list[1] == "echo" || path_list[1] == "user-agent" {
+	// 	userAgent, ok := req.Headers["User-Agent"]
+	// 	if !ok {
+	// 		userAgent = path_list[len(path_list)-1]
+	// 	}
+	// 	response(conn, true, userAgent)
+	// } else {
+	// 	response(conn, false, "")
+	// }
+	var response Response
 	if req.Path == "/" || path_list[1] == "echo" || path_list[1] == "user-agent" {
-		userAgent, ok := req.Headers["User-Agent"]
+		body, ok := req.Headers["User-Agent"]
 		if !ok {
-			userAgent = path_list[len(path_list)-1]
+			body = path_list[len(path_list)-1]
 		}
-		response(conn, true, userAgent)
+		response = Response{
+			StatusCode: 200,
+			StatusText: "OK",
+			Headers: map[string]string{
+				"Content-Type": "text/plain",
+			},
+			Body: body,
+		}
 	} else {
-		response(conn, false, "")
+		response = Response{
+			StatusCode: 404,
+			StatusText: "Not Found",
+			Headers:    map[string]string{},
+			Body:       "",
+		}
 	}
+	response.WriteResponse(conn, req)
 
 }
-func response(conn net.Conn, okay bool, body string) {
-	defer conn.Close()
-	var response string = ""
-	if okay {
-		response = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(body), body)
-	} else {
-		response = "HTTP/1.1 404 Not Found\r\n\r\n"
-	}
-	_, err := conn.Write([]byte(response))
-	if err != nil {
-		fmt.Println("Error writing to connection: ", err.Error())
-		os.Exit(1)
-	}
-}
+
+// func response(conn net.Conn, okay bool, body string) {
+// 	defer conn.Close()
+// 	var response string = ""
+// 	if okay {
+// 		response = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(body), body)
+// 	} else {
+// 		response = "HTTP/1.1 404 Not Found\r\n\r\n"
+// 	}
+// 	_, err := conn.Write([]byte(response))
+// 	if err != nil {
+// 		fmt.Println("Error writing to connection: ", err.Error())
+// 		os.Exit(1)
+// 	}
+// }
