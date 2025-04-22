@@ -36,19 +36,21 @@ func request(conn net.Conn) {
 		os.Exit(1)
 	}
 	str := string(request[:n])
-	_, path, _, err := parseRequestLine(str)
+	req, err := parseRequestLine(str)
 	if err != nil {
 		fmt.Println("Error parsing request: ", err.Error())
 		os.Exit(1)
 	}
-	print(path)
-	// pages := make(map[string]bool)
 
-	path_list := strings.Split(path, "/")
-	data := path_list[len(path_list)-1]
-	fmt.Println("Data: ", data)
-	if path == "/" || path_list[1] == "echo" {
-		response(conn, true, data)
+	path_list := strings.Split(req.Path, "/")
+	fmt.Println("req: ", req)
+
+	if req.Path == "/" || path_list[1] == "echo" || path_list[1] == "user-agent" {
+		userAgent, ok := req.Headers["User-Agent"]
+		if !ok {
+			userAgent = path_list[len(path_list)-1]
+		}
+		response(conn, true, userAgent)
 	} else {
 		response(conn, false, "")
 	}
