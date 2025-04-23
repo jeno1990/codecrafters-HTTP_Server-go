@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"strings"
 )
 
@@ -23,23 +23,24 @@ func (req *HttpRequest) GetHeader(key string) string {
 func parseRequestLine(requestLine string) (*HttpRequest, error) {
 	req := HttpRequest{}
 	parts := strings.Split(requestLine, "\r\n")
-
+	// print("reqLine: ===> ", requestLine)
 	method_path_version := strings.Fields(parts[0])
 	host := strings.Fields(parts[1])
-	user_agent := strings.Fields(parts[2])
-	origin := strings.Fields(parts[3])
-	fmt.Println(method_path_version, " | ", host, " | ", origin, " | ", user_agent)
+	headers := make(map[string]string)
+	headers["Host"] = host[1]
+
+	for i := len(parts) - 2; i > 0; i-- {
+		header := strings.Split(parts[i], ":")
+		if len(header) == 2 {
+			headers[header[0]] = strings.TrimSpace(header[1])
+		}
+	}
+
 	req.Method = method_path_version[0]
 	req.Path = method_path_version[1]
 	req.Version = method_path_version[2]
-	headers := make(map[string]string)
-	headers["Host"] = host[1]
-	if len(origin) > 1 {
-		headers["Origin"] = origin[1]
-	}
-	if len(user_agent) > 1 {
-		headers["User-Agent"] = user_agent[1]
-	}
 	req.Headers = headers
+	req.Body = parts[len(parts)-1]
+	log.Println("req: ", req)
 	return &req, nil
 }

@@ -45,7 +45,7 @@ func request(conn net.Conn) {
 		os.Exit(1)
 	}
 
-	path := strings.Split(req.Path, "/")
+	url := strings.Split(req.Path, "/")
 	fmt.Println("req: ", req)
 
 	// if req.Path == "/" || path_list[1] == "echo" || path_list[1] == "user-agent" {
@@ -58,21 +58,45 @@ func request(conn net.Conn) {
 	// 	response(conn, false, "")
 	// }
 	var response Response
-	if path[1] == "files" {
-		fileName := path[2]
-		if _, err := os.Stat(os.Args[2] + fileName); err == nil {
-			// File exists, read its contents
-			content, _ := os.ReadFile(os.Args[2] + fileName)
+	if req.Method == "GET" {
+
+		if url[1] == "files" {
+			fileName := url[2]
+			if _, err := os.Stat(os.Args[2] + fileName); err == nil {
+				// File exists, read its contents
+				content, _ := os.ReadFile(os.Args[2] + fileName)
+				response = Response{
+					StatusCode: 200,
+					StatusText: "OK",
+					Headers: map[string]string{
+						"Content-Type": "application/octet-stream",
+					},
+					Body: string(content),
+				}
+
+			} else if os.IsNotExist(err) {
+				response = Response{
+					StatusCode: 404,
+					StatusText: "Not Found",
+					Headers:    map[string]string{},
+					Body:       "",
+				}
+			}
+
+		} else if req.Path == "/" || url[1] == "echo" || url[1] == "user-agent" {
+			body, ok := req.Headers["User-Agent"]
+			if !ok {
+				body = url[len(url)-1]
+			}
 			response = Response{
 				StatusCode: 200,
 				StatusText: "OK",
 				Headers: map[string]string{
-					"Content-Type": "application/octet-stream",
+					"Content-Type": "text/plain",
 				},
-				Body: string(content),
+				Body: body,
 			}
-
-		} else if os.IsNotExist(err) {
+		} else {
 			response = Response{
 				StatusCode: 404,
 				StatusText: "Not Found",
@@ -80,24 +104,20 @@ func request(conn net.Conn) {
 				Body:       "",
 			}
 		}
-
-	} else if req.Path == "/" || path[1] == "echo" || path[1] == "user-agent" {
-		body, ok := req.Headers["User-Agent"]
-		if !ok {
-			body = path[len(path)-1]
-		}
+	} else if req.Method == "POST" {
+		file_path := os.Args[2] + url[2]
+		os.WriteFile(file_path, []byte(req.Body), 0644)
+		print("POST request------------------------")
 		response = Response{
-			StatusCode: 200,
-			StatusText: "OK",
-			Headers: map[string]string{
-				"Content-Type": "text/plain",
-			},
-			Body: body,
+			StatusCode: 201,
+			StatusText: "Created",
+			Headers:    map[string]string{},
+			Body:       "",
 		}
 	} else {
 		response = Response{
-			StatusCode: 404,
-			StatusText: "Not Found",
+			StatusCode: 405,
+			StatusText: "Method Not Allowed",
 			Headers:    map[string]string{},
 			Body:       "",
 		}
