@@ -50,8 +50,15 @@ func request(conn net.Conn) {
 
 	var response Response
 	headers := map[string]string{}
-	if _, ok := req.Headers["Accept-Encoding"]; ok && req.Headers["Accept-Encoding"] == "gzip" {
-		headers["Content-Encoding"] = req.Headers["Accept-Encoding"]
+	if _, ok := req.Headers["Accept-Encoding"]; ok {
+		encoddings := strings.Split(req.Headers["Accept-Encoding"], ",")
+		for _, encoding := range encoddings {
+			// fmt.Println("encoding: ", i, encoding)
+			if strings.TrimSpace(encoding) == "gzip" {
+				// fmt.Println("found (:")
+				headers["Content-Encoding"] = "gzip"
+			}
+		}
 	}
 	if req.Method == "GET" {
 		if url[1] == "files" {
@@ -113,5 +120,6 @@ func request(conn net.Conn) {
 			Body:       "",
 		}
 	}
+	fmt.Println("response: ", response)
 	response.WriteResponse(conn, req)
 }
