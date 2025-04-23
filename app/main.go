@@ -48,19 +48,14 @@ func request(conn net.Conn) {
 	url := strings.Split(req.Path, "/")
 	fmt.Println("req: ", req)
 
-	// if req.Path == "/" || path_list[1] == "echo" || path_list[1] == "user-agent" {
-	// 	userAgent, ok := req.Headers["User-Agent"]
-	// 	if !ok {
-	// 		userAgent = path_list[len(path_list)-1]
-	// 	}
-	// 	response(conn, true, userAgent)
-	// } else {
-	// 	response(conn, false, "")
-	// }
 	var response Response
+	headers := map[string]string{}
+	if _, ok := req.Headers["Accept-Encoding"]; ok && req.Headers["Accept-Encoding"] == "gzip" {
+		headers["Content-Encoding"] = req.Headers["Accept-Encoding"]
+	}
 	if req.Method == "GET" {
-
 		if url[1] == "files" {
+			headers["Content-Type"] = "application/octet-stream"
 			fileName := url[2]
 			if _, err := os.Stat(os.Args[2] + fileName); err == nil {
 				// File exists, read its contents
@@ -68,10 +63,8 @@ func request(conn net.Conn) {
 				response = Response{
 					StatusCode: 200,
 					StatusText: "OK",
-					Headers: map[string]string{
-						"Content-Type": "application/octet-stream",
-					},
-					Body: string(content),
+					Headers:    headers,
+					Body:       string(content),
 				}
 
 			} else if os.IsNotExist(err) {
@@ -88,13 +81,12 @@ func request(conn net.Conn) {
 			if !ok {
 				body = url[len(url)-1]
 			}
+			headers["Content-Type"] = "text/plain"
 			response = Response{
 				StatusCode: 200,
 				StatusText: "OK",
-				Headers: map[string]string{
-					"Content-Type": "text/plain",
-				},
-				Body: body,
+				Headers:    headers,
+				Body:       body,
 			}
 		} else {
 			response = Response{
@@ -107,7 +99,6 @@ func request(conn net.Conn) {
 	} else if req.Method == "POST" {
 		file_path := os.Args[2] + url[2]
 		os.WriteFile(file_path, []byte(req.Body), 0644)
-		print("POST request------------------------")
 		response = Response{
 			StatusCode: 201,
 			StatusText: "Created",
