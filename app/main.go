@@ -29,6 +29,7 @@ func main() {
 	}
 
 }
+
 func request(conn net.Conn) {
 	defer conn.Close()
 	request := make([]byte, 1024)
@@ -44,7 +45,7 @@ func request(conn net.Conn) {
 		os.Exit(1)
 	}
 
-	path_list := strings.Split(req.Path, "/")
+	path := strings.Split(req.Path, "/")
 	fmt.Println("req: ", req)
 
 	// if req.Path == "/" || path_list[1] == "echo" || path_list[1] == "user-agent" {
@@ -57,10 +58,33 @@ func request(conn net.Conn) {
 	// 	response(conn, false, "")
 	// }
 	var response Response
-	if req.Path == "/" || path_list[1] == "echo" || path_list[1] == "user-agent" {
+	if path[1] == "files" {
+		fileName := path[2]
+		if _, err := os.Stat(os.Args[2] + fileName); err == nil {
+			// File exists, read its contents
+			content, _ := os.ReadFile(os.Args[2] + fileName)
+			response = Response{
+				StatusCode: 200,
+				StatusText: "OK",
+				Headers: map[string]string{
+					"Content-Type": "application/octet-stream",
+				},
+				Body: string(content),
+			}
+
+		} else if os.IsNotExist(err) {
+			response = Response{
+				StatusCode: 404,
+				StatusText: "Not Found",
+				Headers:    map[string]string{},
+				Body:       "",
+			}
+		}
+
+	} else if req.Path == "/" || path[1] == "echo" || path[1] == "user-agent" {
 		body, ok := req.Headers["User-Agent"]
 		if !ok {
-			body = path_list[len(path_list)-1]
+			body = path[len(path)-1]
 		}
 		response = Response{
 			StatusCode: 200,
@@ -79,20 +103,4 @@ func request(conn net.Conn) {
 		}
 	}
 	response.WriteResponse(conn, req)
-
 }
-
-// func response(conn net.Conn, okay bool, body string) {
-// 	defer conn.Close()
-// 	var response string = ""
-// 	if okay {
-// 		response = fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", len(body), body)
-// 	} else {
-// 		response = "HTTP/1.1 404 Not Found\r\n\r\n"
-// 	}
-// 	_, err := conn.Write([]byte(response))
-// 	if err != nil {
-// 		fmt.Println("Error writing to connection: ", err.Error())
-// 		os.Exit(1)
-// 	}
-// }
