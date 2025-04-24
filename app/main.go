@@ -53,9 +53,7 @@ func request(conn net.Conn) {
 	if _, ok := req.Headers["Accept-Encoding"]; ok {
 		encoddings := strings.Split(req.Headers["Accept-Encoding"], ",")
 		for _, encoding := range encoddings {
-			// fmt.Println("encoding: ", i, encoding)
 			if strings.TrimSpace(encoding) == "gzip" {
-				// fmt.Println("found (:")
 				headers["Content-Encoding"] = "gzip"
 			}
 		}
