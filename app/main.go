@@ -106,9 +106,9 @@ func processRequest(req *HttpRequest) Response {
 			}
 
 		} else if req.Path == "/" || url[1] == "echo" || url[1] == "user-agent" {
-			body, ok := req.Headers["User-Agent"]
-			if !ok {
-				// if url[1] == "echo" {
+			body, _ := req.Headers["User-Agent"]
+			// if !ok {
+			if url[1] == "echo" {
 				body = url[len(url)-1]
 			}
 			headers["Content-Type"] = "text/plain"
