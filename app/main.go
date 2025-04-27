@@ -79,6 +79,9 @@ func processRequest(req *HttpRequest) Response {
 			}
 		}
 	}
+	if req.GetHeader("Connection") == "close" {
+		headers["Connection"] = "close"
+	}
 	if req.Method == "GET" {
 		if url[1] == "files" {
 			headers["Content-Type"] = "application/octet-stream"
