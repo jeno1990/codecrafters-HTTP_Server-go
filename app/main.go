@@ -1,7 +1,9 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"strings"
@@ -12,41 +14,60 @@ var _ = os.Exit
 
 func main() {
 
-	l, err := net.Listen("tcp", "0.0.0.0:4221")
+	listner, err := net.Listen("tcp", "0.0.0.0:4221")
 	if err != nil {
 		fmt.Println("Failed to bind to port 4221")
 		os.Exit(1)
 	}
-	defer l.Close()
+	defer listner.Close()
 	for {
-		conn, err := l.Accept()
-
+		conn, err := listner.Accept()
 		if err != nil {
 			fmt.Println("Error accepting connection: ", err.Error())
 			os.Exit(1)
 		}
-		go request(conn)
+		go handleRequest(conn)
 	}
-
 }
 
-func request(conn net.Conn) {
+func handleRequest(conn net.Conn) {
 	defer conn.Close()
-	request := make([]byte, 1024)
-	n, err := conn.Read(request)
-	if err != nil {
-		fmt.Println("Error reading from connection: ", err.Error())
-		os.Exit(1)
-	}
-	str := string(request[:n])
-	req, err := parseRequestLine(str)
-	if err != nil {
-		fmt.Println("Error parsing request: ", err.Error())
-		os.Exit(1)
-	}
+	for {
+		request := make([]byte, 1024)
+		n, err := conn.Read(request)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				fmt.Println("client closed connection")
+			} else if ne, ok := err.(net.Error); ok && ne.Timeout() {
+				fmt.Println("read timeout; closing connection")
+			} else {
+				fmt.Printf("bad request: %v", err)
+			}
+			return
+		}
+		str := string(request[:n])
+		req, err := parseRequestLine(str)
+		if err != nil {
+			fmt.Println("Error parsing request: ", err.Error())
+			return
+		}
+		response := processRequest(req)
+		// fmt.Println("response: ", response)
 
+		response.WriteResponse(conn, req)
+
+		// break the loop if the request header contains the "Connection: close" header
+		if req.GetHeader("Connection") == "close" {
+			fmt.Println("Connection closed by client request")
+			return
+		}
+	}
+	// conn.Close()
+}
+
+func processRequest(req *HttpRequest) Response {
 	url := strings.Split(req.Path, "/")
-	fmt.Println("req: ", req)
+	// fmt.Println("req: ", req)
 
 	var response Response
 	headers := map[string]string{}
@@ -82,8 +103,9 @@ func request(conn net.Conn) {
 			}
 
 		} else if req.Path == "/" || url[1] == "echo" || url[1] == "user-agent" {
-			body, ok := req.Headers["User-Agent"]
-			if !ok {
+			body, _ := req.Headers["User-Agent"]
+			// if !ok {
+			if url[1] == "echo" {
 				body = url[len(url)-1]
 			}
 			headers["Content-Type"] = "text/plain"
@@ -118,6 +140,5 @@ func request(conn net.Conn) {
 			Body:       "",
 		}
 	}
-	fmt.Println("response: ", response)
-	response.WriteResponse(conn, req)
+	return response
 }

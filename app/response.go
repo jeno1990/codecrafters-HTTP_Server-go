@@ -16,7 +16,6 @@ type Response struct {
 }
 
 func (r *Response) WriteResponse(conn net.Conn, req *HttpRequest) {
-	defer conn.Close()
 
 	// Build the response headers
 	headers := ""
@@ -27,30 +26,42 @@ func (r *Response) WriteResponse(conn net.Conn, req *HttpRequest) {
 	var body = ""
 
 	// compress the body if it exists
-	_, ok := req.Headers["Accept-Encoding"]
-	if r.Body != "" && ok && r.Headers["Content-Encoding"] == "gzip" {
-		bytes, size, err := compressWithGzip(r.Body)
-		if err != nil {
-			fmt.Println("Error compressing data: ", err.Error())
-			return
-		}
+	if r.Body != "" {
+		b, size, _ := r.compressBody(req)
+		body = b
 		content_length = fmt.Sprintf("Content-Length: %d", size)
-		body = string(bytes)
-
-	} else if r.Body != "" {
-		content_length = fmt.Sprintf("Content-Length: %d", len(r.Body))
-		body = r.Body
 	}
 
 	// Build the full response
 	response := fmt.Sprintf("HTTP/1.1 %d %s\r\n%s%s\r\n\r\n%s",
-		r.StatusCode, r.StatusText, headers, content_length, body)
-	fmt.Print("___response____: ", response)
+		r.StatusCode,
+		r.StatusText,
+		headers,
+		content_length,
+		body)
+	fmt.Println("___response____: ", response)
+
 	// Write the response to the connection
 	_, err := conn.Write([]byte(response))
 	if err != nil {
 		fmt.Println("Error writing to connection: ", err.Error())
 	}
+}
+
+func (r *Response) compressBody(req *HttpRequest) (string, int, error) {
+	_, ok := req.Headers["Accept-Encoding"]
+	if ok && r.Headers["Content-Encoding"] == "gzip" {
+		bytes, size, err := compressWithGzip(r.Body)
+		if err != nil {
+			fmt.Println("Error compressing data: ", err.Error())
+			return "", 0, err
+		}
+		body := string(bytes)
+		return body, size, nil
+	}
+	body := r.Body
+	return body, len(r.Body), nil
+
 }
 
 func compressWithGzip(str string) ([]byte, int, error) {

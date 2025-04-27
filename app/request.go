@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"fmt"
 	"strings"
 )
 
@@ -23,7 +23,7 @@ func (req *HttpRequest) GetHeader(key string) string {
 func parseRequestLine(requestLine string) (*HttpRequest, error) {
 	req := HttpRequest{}
 	parts := strings.Split(requestLine, "\r\n")
-	// print("reqLine: ===> ", requestLine)
+
 	method_path_version := strings.Fields(parts[0])
 	host := strings.Fields(parts[1])
 	headers := make(map[string]string)
@@ -41,6 +41,7 @@ func parseRequestLine(requestLine string) (*HttpRequest, error) {
 	req.Version = method_path_version[2]
 	req.Headers = headers
 	req.Body = parts[len(parts)-1]
-	log.Println("req: ", req)
+
+	fmt.Println("___request_____: \n", "Versin: ", req.Version, "\nMethod: ", req.Method, "\nPath: ", req.Path, "\nHeaders: ", req.Headers, "\nBody: ", req.Body)
 	return &req, nil
 }
